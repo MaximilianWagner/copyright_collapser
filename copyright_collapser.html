@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Input to Output Example</title>
+  <style>
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    
+    label {
+      font-size: 18px;
+      margin-bottom: 5px;
+    }
+    
+    textarea {
+      width: 300px;
+      height: 100px;
+      font-size: 16px;
+      margin-bottom: 20px;
+      padding: 10px;
+    }
+    
+    button {
+      font-size: 18px;
+      padding: 10px 20px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Input to Output Example</h1>
+  
+  <div class="container">
+    <label for="inputField">Enter text:</label>
+    <textarea id="inputField"></textarea>
+    
+    <button onclick="outputText()">↓ Submit ↓</button>
+    
+    <label for="outputField">Output:</label>
+    <textarea id="outputField" readonly></textarea>
+  </div>
+
+  <script>
+    function decodeYearSequence(sequence) {
+      const years = [];
+
+      // Split the sequence by commas and iterate over each part
+      sequence.split(',').forEach(part => {
+        part = part.trim();
+        
+        // Check if the part contains a range (year1-year2)
+        if (part.includes('-')) {
+          const [start, end] = part.split('-');
+          const startYear = parseInt(start, 10);
+          const endYear = parseInt(end, 10);
+          
+          // Add each year in the range to the years array
+          for (let year = startYear; year <= endYear; year++) {
+            if (year >= 1900 && year <= 2100) {
+              years.push(year);
+            }
+          }
+        } else {
+          // Single year, parse and add to the years array if within range
+          const year = parseInt(part, 10);
+          if (year >= 1900 && year <= 2100) {
+            years.push(year);
+          }
+        }
+      });
+
+      // Sort the years array in ascending order and return
+      return years.sort((a, b) => a - b);
+    }
+
+    function collapseDateRanges(years) {
+      // Sort the array in ascending order
+      years.sort((a, b) => a - b);
+      // filter out duplicates
+      years = years.filter((value, index) => years.indexOf(value) === index)
+
+      const ranges = [];
+      let startYear = years[0];
+      let prevYear = startYear;
+
+      for (let i = 1; i < years.length; i++) {
+        const currentYear = years[i];
+
+        if (currentYear !== prevYear + 1) {
+          // Current year is not consecutive with the previous year
+          if (startYear === prevYear) {
+            ranges.push(startYear.toString());
+          } else {
+            ranges.push(`${startYear}-${prevYear}`);
+          }
+          startYear = currentYear;
+        }
+
+        prevYear = currentYear;
+      }
+
+      // Handle the last range after the loop ends
+      if (startYear === prevYear) {
+        ranges.push(startYear.toString());
+      } else {
+        ranges.push(`${startYear}-${prevYear}`);
+      }
+
+      return ranges.join(', ');
+    }
+
+    function outputText() {
+        // Get the value from the input field
+        var inputText = document.getElementById("inputField").value;
+
+        // Split the input text into lines
+        var lines = inputText.split("\n");
+
+        // Initialize variables to store the extracted data
+        var copyrightTable = {};
+        var allRightsReservedTable = {};
+        var someRightsReservedTable = {};
+
+        var unparsableLines = [];
+
+        // Process each line
+        for (var i = 0; i < lines.length; i++) {
+          var allRightsReserved = false;
+          var someRightsReserved = false;
+          var years = [];
+          var rights_holder = ""
+          
+          var line = lines[i].trim();
+          var original_line = line;
+
+          // Create a case-insensitive regular expression for the copyright notices
+          regex = /.*(?:copyright (?:\(c\)|\©)?|\(c\))/i;
+          
+          // Replace all occurrences of the copyright notices with an empty line
+          if (regex.test(line)) {
+            line = line.replace(regex, '').trim();
+          } else {
+            unparsableLines.push(original_line);
+            continue;
+          }
+
+          // Extract the copyright date
+          regex = /\b(19[0-9]{2}|20[0-9]{2})(?:\s*[-,]\s*(19[0-9]{2}|20[0-9]{2}))*\b/g;
+          // Check if the line contains the sequence
+          if (regex.test(line)) {
+            // If found, decode years and remove the sequence from the line
+            years = decodeYearSequence(line);
+            line = line.replace(regex, '').trim();
+          } else {
+            unparsableLines.push(line)
+            continue;
+          }
+
+          // Extract the copyright key from the next line
+          if (i + 1 < lines.length) {
+              copyrightKey = lines[i + 1].trim();
+          }
+
+          // Create a case-insensitive regular expression with optional period at the end
+          regex = /all rights reserved\.?$/i;
+          
+          // Check if the line contains the sequence
+          if (regex.test(line)) {
+            // If found, line the sequence from the line
+            line = line.replace(regex, '').trim();
+            allRightsReserved = true;
+          }
+
+          // Create a case-insensitive regular expression with optional period at the end
+          regex = /some rights reserved\.?$/i;
+          
+          // Check if the line contains the sequence
+          if (regex.test(line)) {
+            // If found, remove the sequence from the line
+            line = line.replace(regex, '').trim();
+            someRightsReserved = true;
+          }
+
+          rights_holder = line;
+          if(!(rights_holder in copyrightTable)) {
+            copyrightTable[rights_holder] = [];
+          }
+          if(!(rights_holder in allRightsReservedTable)) {
+            allRightsReservedTable[rights_holder] = false;
+          }
+          if(!(rights_holder in someRightsReservedTable)) {
+            someRightsReservedTable[rights_holder] = false;
+          }
+
+          copyrightTable[rights_holder] = copyrightTable[rights_holder].concat(years).sort((a, b) => a - b);
+          allRightsReservedTable[rights_holder] = allRightsReservedTable[rights_holder] || allRightsReserved;
+          someRightsReservedTable[rights_holder] = someRightsReservedTable[rights_holder] || someRightsReserved;
+        }
+
+        // Display the extracted data in the output field
+        var outputText = "Copyright Table:\n";
+        outputText += JSON.stringify(copyrightTable, null, 2) + "\n\n";
+        outputText += "All Rights Reserved Table:\n";
+        outputText += JSON.stringify(allRightsReservedTable, null, 2) + "\n\n";
+        outputText += "Some Rights Reserved Table:\n";
+        outputText += JSON.stringify(someRightsReservedTable, null, 2) + "\n\n";
+
+        for (const [key, value] of Object.entries(copyrightTable)) {
+          outputText += "Copyright (C) ";
+          outputText += key + " ";
+          outputText += collapseDateRanges(value);
+
+          if (key in allRightsReservedTable) {
+            outputText += " All rights reserved.";
+          } else {
+            if (key in someRightsReservedTable) {
+              outputText += " Some rights reserved.";
+            }
+          }
+          outputText += "\n";
+        }
+
+        outputText += "\nNot parsable Lines:";
+        for(unparsableLine of unparsableLines) {
+          outputText += unparsableLine + "\n";
+        }
+        
+        
+        document.getElementById("outputField").value = outputText;
+      }
+  </script>
+</body>
+</html>
